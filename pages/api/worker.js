@@ -1,12 +1,13 @@
 // /api/worker.js
 
-import chromium from 'puppeteer-core';
+import puppeteer from 'puppeteer-core';
 
 const BROWSERLESS_WS = `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`;
 
-let ipRequests = new Map(); // Memória local (reinicia a cada execução)
+let ipRequests = new Map(); // Reiniciado a cada execução
 
 export default async function handler(req, res) {
+  // 🌐 CORS preflight
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -14,12 +15,16 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  const targetUrl = req.query.url;
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
 
+  const targetUrl = req.query.url;
   if (!targetUrl) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
-    return res.status(400).send("Missing 'url' parameter.");
+    return res.status(400).json({ error: "Missing 'url' parameter." });
+  }
+
+  if (!process.env.BROWSERLESS_TOKEN) {
+    return res.status(500).json({ error: 'BROWSERLESS_TOKEN não configurado.' });
   }
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
@@ -32,9 +37,7 @@ export default async function handler(req, res) {
   }
 
   if (entry.count >= 20) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
-    return res.status(429).send('Limite de requisições atingido. Tente novamente em 1 minuto.');
+    return res.status(429).json({ error: 'Limite de requisições atingido. Tente novamente em 1 minuto.' });
   }
 
   entry.count++;
@@ -43,12 +46,8 @@ export default async function handler(req, res) {
   let browser = null;
 
   try {
-    browser = await chromium.connect({
-      browserWSEndpoint: BROWSERLESS_WS,
-    });
-
+    browser = await puppeteer.connect({ browserWSEndpoint: BROWSERLESS_WS });
     const page = await browser.newPage();
-
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
     const visibleText = await page.evaluate(() => {
@@ -56,28 +55,27 @@ export default async function handler(req, res) {
       return body ? body.innerText.replace(/\s+/g, ' ').trim() : '';
     });
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
-    res.setHeader('Content-Type', 'application/json');
     return res.status(200).json({ text: visibleText });
-
   } catch (err) {
     console.error('Erro:', err);
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
-    res.setHeader('Content-Type', 'application/json');
 
     return res.status(500).json({
       error: 'Erro ao buscar o conteúdo via Browserless',
       message: err.message,
       code: err.code || null,
       status: err.response?.status || null,
-      data: err.response?.data ? err.response.data.slice(0, 500) : 'Sem conteúdo retornado'
+      data:
+        typeof err.response?.data === 'string'
+          ? err.response.data.slice(0, 500)
+          : 'Sem conteúdo retornado',
     });
   } finally {
     if (browser) {
-      await browser.close();
+      try {
+        await browser.close();
+      } catch (e) {
+        console.warn('Erro ao fechar o navegador:', e);
+      }
     }
   }
 }
