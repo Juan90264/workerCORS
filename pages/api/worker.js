@@ -2,7 +2,6 @@
 
 import puppeteer from 'puppeteer';
 
-
 let ipRequests = new Map();
 
 export default async function handler(req, res) {
