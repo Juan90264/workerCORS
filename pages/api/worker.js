@@ -17,6 +17,8 @@ export default async function handler(req, res) {
   const targetUrl = req.query.url;
 
   if (!targetUrl) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
     return res.status(400).send("Missing 'url' parameter.");
   }
 
@@ -33,6 +35,8 @@ export default async function handler(req, res) {
   }
 
   if (entry.count >= 20) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
     return res.status(429).send('Limite de requisições atingido. Tente novamente em 1 minuto.');
   }
 
@@ -54,6 +58,7 @@ export default async function handler(req, res) {
 
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
+      res.setHeader('Content-Type', 'application/json');
       return res.status(200).json({ text: visibleText });
     }
 
@@ -63,6 +68,8 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', response.headers['content-type'] || 'text/html');
     res.status(200).send(response.data);
   } catch (err) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
     res.status(500).send('Erro ao buscar o conteúdo: ' + err.message);
   }
 }
