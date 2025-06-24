@@ -1,8 +1,10 @@
 // /api/worker.js
 
-import puppeteer from 'puppeteer';
+import chromium from 'puppeteer-core';
 
-let ipRequests = new Map();
+const BROWSERLESS_WS = 'wss://chrome.browserless.io?token=SEU_TOKEN_AQUI';
+
+let ipRequests = new Map(); // Memória local (reinicia a cada execução)
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -38,31 +40,21 @@ export default async function handler(req, res) {
   entry.count++;
   ipRequests.set(ip, entry);
 
+  let browser = null;
+
   try {
-    const browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      headless: true,
+    browser = await chromium.connect({
+      browserWSEndpoint: BROWSERLESS_WS,
     });
 
     const page = await browser.newPage();
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    );
 
-    await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 15000 });
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
-    // Extrair texto visível do body
     const visibleText = await page.evaluate(() => {
-      // Remove scripts, styles e elementos indesejados
-      const removeSelectors = ['script', 'style', 'noscript', 'iframe', 'header', 'footer', 'nav', '.ads', '.promo'];
-      removeSelectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => el.remove());
-      });
-      return document.body.innerText.replace(/\s+/g, ' ').trim();
+      const body = document.querySelector('body');
+      return body ? body.innerText.replace(/\s+/g, ' ').trim() : '';
     });
-
-    await browser.close();
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
@@ -71,15 +63,21 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('Erro:', err);
+
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Cache-Control');
     res.setHeader('Content-Type', 'application/json');
+
     return res.status(500).json({
-      error: 'Erro ao buscar o conteúdo via Puppeteer',
+      error: 'Erro ao buscar o conteúdo via Browserless',
       message: err.message,
       code: err.code || null,
       status: err.response?.status || null,
-      data: typeof err.response?.data === 'string' ? err.response.data.slice(0, 500) : 'Sem conteúdo retornado',
+      data: err.response?.data ? err.response.data.slice(0, 500) : 'Sem conteúdo retornado'
     });
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
