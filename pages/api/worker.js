@@ -2,7 +2,7 @@
 
 import chromium from 'puppeteer-core';
 
-const BROWSERLESS_WS = 'wss://chrome.browserless.io?token=2SYc3l8GJibInig42f94e2a45380b433c6d83a8e1e1713776';
+const BROWSERLESS_WS = `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`;
 
 let ipRequests = new Map(); // Memória local (reinicia a cada execução)
 
