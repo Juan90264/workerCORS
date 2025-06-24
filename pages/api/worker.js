@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
       const visibleText = await page.evaluate(() => {
         const body = document.querySelector('body');
-        return body ? body.innerText.replace(/\s+/g, ' ').trim() : '';
+        return body ? body.innerText.trim() : '';
       });
 
       return res.status(200).json({ text: visibleText });
