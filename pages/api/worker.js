@@ -2,7 +2,7 @@
 
 import puppeteer from 'puppeteer-core';
 
-const BROWSERLESS_WS = `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`;
+const BROWSERLESS_WS = `wss://production-sfo.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`;
 
 let ipRequests = new Map(); // Reiniciado a cada execução
 
