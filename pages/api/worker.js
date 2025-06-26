@@ -1,17 +1,16 @@
-// /api/worker.js
-
 export const config = {
   runtime: 'nodejs'
 };
 
 import puppeteer from 'puppeteer-core';
 import axios from 'axios';
-import cheerio from 'cheerio';
+import pkg from 'cheerio';
+const { load } = pkg;  // <-- Import correto para evitar erro
 
 const BROWSERLESS_WS = `wss://production-sfo.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`;
 let ipRequests = new Map();
 
-// 🛡️ Função que garante CORS em todas as respostas
+// Função para garantir CORS sempre
 function safeJson(res, statusCode, data) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -22,7 +21,6 @@ function safeJson(res, statusCode, data) {
 }
 
 export default async function handler(req, res) {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     return safeJson(res, 204, {});
   }
@@ -54,7 +52,6 @@ export default async function handler(req, res) {
   let browser = null;
 
   try {
-    // Tentar primeiro com Browserless + Puppeteer
     if (process.env.BROWSERLESS_TOKEN) {
       try {
         browser = await puppeteer.connect({ browserWSEndpoint: BROWSERLESS_WS });
@@ -73,7 +70,6 @@ export default async function handler(req, res) {
 
         if (puppeteerErr.message.includes('429')) {
           console.log('🔁 Limitado no Browserless (429), caindo para fallback...');
-          // Continua para o fallback
         } else {
           return safeJson(res, 200, {
             error: true,
@@ -91,7 +87,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.warn('⛔ Erro geral no Browserless:', err.message);
-    // Continua para o fallback
   } finally {
     if (browser) {
       try {
@@ -102,7 +97,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 🔁 Fallback com axios + cheerio
   try {
     const response = await axios.get(targetUrl, {
       headers: {
@@ -119,7 +113,7 @@ export default async function handler(req, res) {
       timeout: 10000
     });
 
-    const $ = cheerio.load(response.data);
+    const $ = load(response.data);
     const visibleText = $('body').text().replace(/\s+/g, ' ').trim();
 
     return safeJson(res, 200, { text: visibleText });
