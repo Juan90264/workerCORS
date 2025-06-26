@@ -96,24 +96,21 @@ export default async function handler(req, res) {
         },
         timeout: 10000
       });
-
+    
       const $ = cheerio.load(response.data);
       const visibleText = $('body').text().replace(/\s+/g, ' ').trim();
-
+    
       return res.status(200).json({ text: visibleText });
-
+    
     } catch (fallbackErr) {
       console.error('🔥 Fallback falhou:', fallbackErr);
-
-      return res.status(500).json({
-        error: 'Erro ao buscar o conteúdo (Puppeteer e Fallback falharam)',
-        message: fallbackErr.message,
-        code: fallbackErr.code || null,
-        status: fallbackErr.response?.status || null,
-        data:
-          typeof fallbackErr.response?.data === 'string'
-            ? fallbackErr.response.data.slice(0, 500)
-            : 'Sem conteúdo retornado',
+    
+      // Agora retornando erro leve, não erro HTTP 500
+      return res.status(200).json({
+        error: true,
+        message: 'Erro ao buscar o conteúdo (falha no Puppeteer e fallback)',
+        detail: fallbackErr.message,
+        status: fallbackErr.response?.status || null
       });
     }
 
