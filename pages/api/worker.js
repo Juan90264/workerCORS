@@ -69,8 +69,9 @@ export default async function handler(req, res) {
       } catch (puppeteerErr) {
         console.warn('⛔ Erro no Puppeteer:', puppeteerErr.message);
 
-        if (puppeteerErr.message.includes('429')) {
-          console.log('🔁 Limitado no Browserless (429), caindo para fallback...');
+        if (puppeteerErr.message.includes('429') || puppeteerErr.message.includes('403')) {
+          console.log('🔁 Erro no Browserless (429 ou 403), caindo para fallback...');
+          // Continua para fallback
         } else {
           return safeJson(res, 200, {
             error: true,
