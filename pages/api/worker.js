@@ -59,13 +59,18 @@ export default async function handler(req, res) {
         return res.status(200).json({ text: visibleText });
     
       } catch (puppeteerErr) {
-        console.warn('⛔ Erro no Puppeteer:', puppeteerErr);
-    
-        return res.status(200).json({
-          error: true,
-          message: 'Erro ao carregar com Browserless',
-          detail: puppeteerErr.message,
-        });
+        console.warn('⛔ Erro no Puppeteer:', puppeteerErr.message);
+      
+        if (puppeteerErr.message.includes('429')) {
+          console.log('🔁 Caindo para fallback por limite 429...');
+          // Continuar normalmente no fluxo para o fallback
+        } else {
+          return res.status(200).json({
+            error: true,
+            message: 'Erro ao carregar com Browserless',
+            detail: puppeteerErr.message,
+          });
+        }
       }
     } else {
       return res.status(200).json({
