@@ -1,16 +1,17 @@
+// /api/worker.js
+
 export const config = {
   runtime: 'nodejs'
 };
 
 import puppeteer from 'puppeteer-core';
 import axios from 'axios';
-import pkg from 'cheerio';
-const { load } = pkg;  // <-- Import correto para evitar erro
+import { load } from 'cheerio'; // ✅ Correto
 
 const BROWSERLESS_WS = `wss://production-sfo.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`;
 let ipRequests = new Map();
 
-// Função para garantir CORS sempre
+// Garante CORS sempre
 function safeJson(res, statusCode, data) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -100,8 +101,7 @@ export default async function handler(req, res) {
   try {
     const response = await axios.get(targetUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-                      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Referer': targetUrl,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
