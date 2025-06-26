@@ -46,21 +46,33 @@ export default async function handler(req, res) {
   try {
     // Tentar primeiro com Browserless + Puppeteer
     if (process.env.BROWSERLESS_TOKEN) {
-      browser = await puppeteer.connect({ browserWSEndpoint: BROWSERLESS_WS });
-      const page = await browser.newPage();
-      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
-
-      const visibleText = await page.evaluate(() => {
-        const body = document.querySelector('body');
-        return body ? body.innerText.trim() : '';
-      });
-
-      return res.status(200).json({ text: visibleText });
+      try {
+        browser = await puppeteer.connect({ browserWSEndpoint: BROWSERLESS_WS });
+        const page = await browser.newPage();
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    
+        const visibleText = await page.evaluate(() => {
+          const body = document.querySelector('body');
+          return body ? body.innerText.trim() : '';
+        });
+    
+        return res.status(200).json({ text: visibleText });
+    
+      } catch (puppeteerErr) {
+        console.warn('⛔ Erro no Puppeteer:', puppeteerErr);
+    
+        return res.status(200).json({
+          error: true,
+          message: 'Erro ao carregar com Browserless',
+          detail: puppeteerErr.message,
+        });
+      }
     } else {
-      console.warn('⚠️ BROWSERLESS_TOKEN não definido, indo direto para fallback.');
-      throw new Error('Browserless desabilitado');
+      return res.status(200).json({
+        error: true,
+        message: 'BROWSERLESS_TOKEN não está configurado no servidor.',
+      });
     }
-
   } catch (err) {
     console.warn('⛔ Erro no Browserless, usando fallback com axios + cheerio...', err.message);
 
